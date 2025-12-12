@@ -1,36 +1,53 @@
-# This is a basic workflow to help you get started with Actions
+name: Azure ML - Run Diabetes Pipeline
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+env:
+  AZURE_SUBSCRIPTION_ID: e60461c1-7c93-4631-b162-303a5c9f4ed7
+  AZURE_RESOURCE_GROUP: azure-diabetes-rg
+  AZURE_WORKSPACE: diabetes-ml-ws
+  AZURE_LOCATION: westeurope
+
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  run-azureml-pipeline:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Azure login using service principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Show Azure account (debug)
+        run: az account show
+
+      - name: Install Azure ML CLI extension
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          az version
+          az extension add --name ml -y
+          az extension show --name ml
+
+      - name: Configure default group/workspace
+        run: |
+          az configure --defaults \
+            group=$AZURE_RESOURCE_GROUP \
+            workspace=$AZURE_WORKSPACE \
+            location=$AZURE_LOCATION
+
+      - name: Submit Azure ML pipeline job
+        run: |
+          echo "Submitting diabetes-pipeline.yaml..."
+          az ml job create --file diabetes-pipeline.yaml --stream
+
+      - name: List recent jobs
+        run: |
+          az ml job list --max-results 5 --query "[].{name:name,status:status}"
