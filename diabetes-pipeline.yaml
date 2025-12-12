@@ -19,7 +19,7 @@ outputs:
   
 # pipeline setting
 settings:
-  default_compute: azureml:diabetes-created-machine
+  default_compute: azureml:workflow-compute
 
 
 jobs:
@@ -51,7 +51,6 @@ jobs:
   training:
     type: command
     component: components/training/training.yaml
-    compute: diabetes-created-machine
     inputs:
       training_folder: ${{ parent.jobs.data_split.outputs.training_data }}
       testing_folder: ${{ parent.jobs.data_split.outputs.testing_data }}
