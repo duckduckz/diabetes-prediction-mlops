@@ -3,8 +3,6 @@ name: Azure ML - Run Diabetes Pipeline
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
   workflow_dispatch:
 
@@ -43,11 +41,34 @@ jobs:
             workspace=$AZURE_WORKSPACE \
             location=$AZURE_LOCATION
 
-      - name: Submit Azure ML pipeline job
+      - name: Submit Azure ML pipeline job (explicit)
+        id: submit
         run: |
           echo "Submitting diabetes-pipeline.yaml..."
-          az ml job create --file diabetes-pipeline.yaml --stream
+          JOB_NAME=$(az ml job create \
+            --file diabetes-pipeline.yaml \
+            --subscription $AZURE_SUBSCRIPTION_ID \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --workspace-name $AZURE_WORKSPACE \
+            --query name -o tsv)
 
-      - name: List recent jobs
+          echo "Job submitted: $JOB_NAME"
+          echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
+
+      - name: Stream job logs
         run: |
-          az ml job list --max-results 5 --query "[].{name:name,status:status}"
+          az ml job stream \
+            --name ${{ steps.submit.outputs.job_name }} \
+            --subscription $AZURE_SUBSCRIPTION_ID \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --workspace-name $AZURE_WORKSPACE
+
+      - name: List recent jobs (explicit)
+        run: |
+          az ml job list \
+            --subscription $AZURE_SUBSCRIPTION_ID \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --workspace-name $AZURE_WORKSPACE \
+            --max-results 10 \
+            --query "[].{name:name, exp:experiment_name, status:status, created:creation_context.created_at}" \
+            -o table
