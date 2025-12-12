@@ -1,7 +1,6 @@
 $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 
 type: pipeline
-name: diabetes-pipelinev4
 display_name: Diabetes Classification (CLI)
 experiment_name: diabetes_pipeline
 
