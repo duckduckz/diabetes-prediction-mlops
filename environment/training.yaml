@@ -1,0 +1,12 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+description: Environment for training the LightGBM diabetes classification model.
+name: diabetes-training
+version: 0.1.0
+
+conda_file: ../components/training/conda.yaml
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest
+os_type: linux
+
+tags:
+  project: diabetes-prediction
+  part: training

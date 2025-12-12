@@ -1,0 +1,15 @@
+services:
+  diabetes-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: diabetes-api:latest
+    container_name: diabetes-api
+    ports:
+      - "8000:8000"        
+      - "8501:8501"
+    
+    volumes:
+      - ./model:/app/model:ro
+
+    restart: unless-stopped

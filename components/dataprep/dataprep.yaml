@@ -1,0 +1,31 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: diabetes_dataprep
+display_name: Diabetes Data Preparation (CLI)
+description: Clean and preprocess the raw diabetes CSV dataset.
+version: 0.1.0
+type: command
+
+environment: azureml:diabetes-preprocessing:0.1.0
+
+is_deterministic: true
+
+resources:
+  instance_count: 1
+
+code: ./code
+
+command: >-
+  python dataprep.py
+  --data ${{inputs.data}}
+  --output_data ${{outputs.output_data}}
+  --target_column diabetes
+
+inputs:
+  data:
+    type: uri_file   
+    optional: false
+
+outputs:
+  output_data:
+    type: uri_folder

@@ -1,0 +1,30 @@
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+
+# Virtual envs
+venv/
+env/
+*.egg-info/
+
+# Git / IDE stuff
+.git
+.gitignore
+.idea
+.vscode
+
+# Azure ML outputs / large artifacts
+outputs/
+artifacts/
+.azureml/
+mlruns/
+
+# OS / misc
+.DS_Store
+Thumbs.db
+
+*.csv

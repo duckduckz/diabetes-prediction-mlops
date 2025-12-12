@@ -1,0 +1,73 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+
+type: pipeline
+name: diabetes-pipelinev3
+display_name: Diabetes Classification (CLI)
+experiment_name: diabetes_pipeline
+
+inputs:
+  test_size: 0.2   
+  n_estimators: 200
+  learning_rate: 0.05
+  target_column: diabetes
+
+outputs:
+  model:
+    mode: upload
+  registration_details:
+    mode: upload
+  
+# pipeline setting
+settings:
+  default_compute: azureml:diabetes-created-machine
+
+
+jobs:
+  dataprep:
+    type: command
+    component: components/dataprep/dataprep.yaml
+    inputs:
+      data:
+        type: uri_file
+        path: azureml:diabetes_dataset@latest
+
+    outputs:
+      output_data:
+        mode: rw_mount
+
+
+  data_split:
+    type: command
+    component: components/dataprep/data_split.yaml
+    inputs:
+      data: ${{ parent.jobs.dataprep.outputs.output_data }}
+      test_size: ${{ parent.inputs.test_size }}
+    outputs:
+      testing_data:
+        mode: rw_mount
+      training_data:
+        mode: rw_mount
+
+  training:
+    type: command
+    component: components/training/training.yaml
+    compute: diabetes-created-machine
+    inputs:
+      training_folder: ${{ parent.jobs.data_split.outputs.training_data }}
+      testing_folder: ${{ parent.jobs.data_split.outputs.testing_data }}
+      target_column: ${{ parent.inputs.target_column }}
+      n_estimators: ${{ parent.inputs.n_estimators }}
+      learning_rate: ${{ parent.inputs.learning_rate }}
+    outputs:
+      model_output: ${{ parent.outputs.model }}
+
+
+  register:
+    type: command
+    component: azureml://registries/azureml/components/register_model/versions/0.0.9
+    inputs:
+      model_name: diabetes-classification
+      model_type: custom_model
+      model_path: ${{ parent.jobs.training.outputs.model_output }}
+    outputs:
+      registration_details_folder: ${{ parent.outputs.registration_details }}

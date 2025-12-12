@@ -1,0 +1,39 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+
+name: diabetes_data_split
+display_name: Diabetes Train/Test Split (CLI)
+description: Split cleaned diabetes dataset into train and test CSVs.
+version: 0.1.0
+type: command
+
+environment: azureml:diabetes-preprocessing:0.1.0
+
+is_deterministic: true
+
+resources:
+  instance_count: 1
+
+code: ./code
+
+command: >-
+  python traintestsplit.py
+  --data ${{inputs.data}}
+  --training_data_output ${{outputs.training_data}}
+  --testing_data_output ${{outputs.testing_data}}
+  $[[--test_size ${{inputs.test_size}}]]
+
+inputs:
+  data:
+    type: uri_folder  
+    optional: false
+
+  test_size:
+    type: number
+    optional: true  
+
+outputs:
+  training_data:
+    type: uri_folder
+
+  testing_data:
+    type: uri_folder

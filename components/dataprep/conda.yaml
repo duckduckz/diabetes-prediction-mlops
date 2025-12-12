@@ -1,0 +1,17 @@
+name: diabetes-ml-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - scikit-learn
+  - lightgbm
+  - joblib
+  - pip:
+    - inference-schema[numpy-support]==1.3.0
+    - xlrd
+    - mlflow
+    - azureml-mlflow
+    - Pillow
