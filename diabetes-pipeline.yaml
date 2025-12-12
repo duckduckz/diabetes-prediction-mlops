@@ -60,12 +60,4 @@ jobs:
       model_output: ${{ parent.outputs.model }}
 
 
-  register:
-    type: command
-    component: azureml://registries/azureml/components/register_model/versions/0.0.9
-    inputs:
-      model_name: diabetes-classification
-      model_type: custom_model
-      model_path: ${{ parent.jobs.training.outputs.model_output }}
-    outputs:
-      registration_details_folder: ${{ parent.outputs.registration_details }}
+

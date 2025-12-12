@@ -3,6 +3,8 @@ name: Azure ML - Run Diabetes Pipeline
 on:
   push:
     branches: [ "main" ]
+
+
   workflow_dispatch:
 
 env:
@@ -40,29 +42,12 @@ jobs:
             workspace=$AZURE_WORKSPACE \
             location=$AZURE_LOCATION
 
-      # ✅ DEBUG: confirm which YAML is being used and whether it contains any "name:"
-      - name: Debug: show pipeline yaml content
-        run: |
-          echo "PWD=$(pwd)"
-          echo "Repo root files:"
-          ls -la
-          echo "---- diabetes-pipeline.yaml (first 120 lines) ----"
-          nl -ba diabetes-pipeline.yaml | sed -n '1,120p'
-          echo "---- grep for lines that start with 'name:' ----"
-          grep -n "^[[:space:]]*name:" diabetes-pipeline.yaml || true
-          echo "---- grep for lines that contain 'name:' anywhere ----"
-          grep -n "name:" diabetes-pipeline.yaml || true
-
-      - name: Submit Azure ML pipeline job (unique name)
+      - name: Submit Azure ML pipeline job (explicit)
         id: submit
         run: |
           echo "Submitting diabetes-pipeline.yaml..."
-          RUN_NAME="diabetes-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          echo "Run name: $RUN_NAME"
-
           JOB_NAME=$(az ml job create \
             --file diabetes-pipeline.yaml \
-            --set name=$RUN_NAME \
             --subscription $AZURE_SUBSCRIPTION_ID \
             --resource-group $AZURE_RESOURCE_GROUP \
             --workspace-name $AZURE_WORKSPACE \
@@ -80,7 +65,6 @@ jobs:
             --workspace-name $AZURE_WORKSPACE
 
       - name: List recent jobs (explicit)
-        if: always()
         run: |
           az ml job list \
             --subscription $AZURE_SUBSCRIPTION_ID \
