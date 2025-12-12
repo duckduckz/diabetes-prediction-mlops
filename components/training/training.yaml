@@ -3,10 +3,10 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 name: diabetes_training_cli
 display_name: Diabetes Training (CLI)
 description: Train a LightGBM model for diabetes prediction using pre-split train/test CSVs.
-version: 0.1.0
+version: 0.1.1
 type: command
 
-environment: azureml:diabetes-training:0.1.0
+environment: azureml:diabetes-training:0.1.1
 
 is_deterministic: true
 
@@ -20,9 +20,9 @@ command: >-
   --training_folder ${{inputs.training_folder}}
   --testing_folder ${{inputs.testing_folder}}
   --output_folder ${{outputs.model_output}}
-  --target_column ${{inputs.target_column}}
-  --n_estimators ${{inputs.n_estimators}}
-  --learning_rate ${{inputs.learning_rate}}
+  $[[--target_column ${{inputs.target_column}}]]
+  $[[--n_estimators ${{inputs.n_estimators}}]]
+  $[[--learning_rate ${{inputs.learning_rate}}]]
 
 inputs:
   training_folder:

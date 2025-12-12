@@ -3,10 +3,10 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 name: diabetes_data_split
 display_name: Diabetes Train/Test Split (CLI)
 description: Split cleaned diabetes dataset into train and test CSVs.
-version: 0.1.0
+version: 0.1.1
 type: command
 
-environment: azureml:diabetes-preprocessing:0.1.0
+environment: azureml:diabetes-preprocessing:0.1.1
 
 is_deterministic: true
 
