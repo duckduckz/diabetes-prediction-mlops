@@ -30,7 +30,7 @@ jobs:
             az extension add -n ml --yes | Out-Null
           }
           az extension show -n ml
-          az ml -h
+          az ml -h | Out-Null
 
       - name: Run Azure ML pipeline job (train + register)
         shell: powershell
@@ -65,17 +65,30 @@ jobs:
             Write-Host "Azure ML extension not installed. Installing..."
             az extension add -n ml --yes | Out-Null
           }
-          az extension show -n ml
+          az extension show -n ml | Out-Null
 
-      - name: Download latest registered model into ./model
+      - name: Download newest registered model into ./model
         shell: powershell
         run: |
           if (Test-Path ".\model") { Remove-Item ".\model" -Recurse -Force }
           New-Item -ItemType Directory -Path ".\model" | Out-Null
 
+          # Get the highest numeric model version
+          $ver = az ml model list `
+            --name diabetes-classification-model `
+            --resource-group "azure-diabetes-rg" `
+            --workspace-name "diabetes-ml-ws" `
+            --query "sort_by([].{v: to_number(version)}, &v)[-1].v" -o tsv
+
+          if ([string]::IsNullOrWhiteSpace($ver)) {
+            Write-Error "No registered model found named diabetes-classification-model."
+          }
+
+          Write-Host "Downloading diabetes-classification-model version: $ver"
+
           az ml model download `
             --name diabetes-classification-model `
-            --version latest `
+            --version $ver `
             --download-path ".\model" `
             --resource-group "azure-diabetes-rg" `
             --workspace-name "diabetes-ml-ws"
