@@ -17,6 +17,7 @@ from utils import find_single_csv, load_X_y
 
 SEED = 42
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -40,7 +41,7 @@ def main():
     parser.add_argument(
         "--target_column",
         type=str,
-        default="diabetes", 
+        default="diabetes",
         help="Name of target column in the dataset",
     )
     parser.add_argument(
@@ -58,7 +59,10 @@ def main():
     args = parser.parse_args()
 
     print(" ".join(f"{k}={v}" for k, v in vars(args).items()))
-    
+
+    # Make sure output folder exists
+    os.makedirs(args.output_folder, exist_ok=True)
+
     train_csv = find_single_csv(args.training_folder)
     test_csv = find_single_csv(args.testing_folder)
 
@@ -79,16 +83,12 @@ def main():
         import pandas as pd
 
         # combine train and test to ensure same one-hot columns
-        combined = pd.concat(
-            [X_train, X_test],
-            axis=0,
-            keys=["train", "test"]
-        )
+        combined = pd.concat([X_train, X_test], axis=0, keys=["train", "test"])
 
         combined_encoded = pd.get_dummies(
             combined,
             columns=cat_cols,
-            drop_first=True 
+            drop_first=True,
         )
 
         # split back into train and test
@@ -98,13 +98,14 @@ def main():
     print("Train shape after encoding:", X_train.shape, y_train.shape)
     print("Test shape after encoding:", X_test.shape, y_test.shape)
 
+    feature_names = list(X_train.columns)
+
     # Model
     model = LGBMClassifier(
         n_estimators=args.n_estimators,
         learning_rate=args.learning_rate,
         random_state=SEED,
     )
-
 
     model.fit(X_train, y_train)
 
@@ -122,24 +123,44 @@ def main():
     print("Confusion matrix:")
     print(cm)
 
-    # save metrics
-    metrics_dir = os.path.join(args.output_folder, "metrics")
-    os.makedirs(metrics_dir, exist_ok=True)
+    # ---- Save artifacts in a "register-friendly" layout ----
+    # 1) metrics.json at root (easy to find)
     metrics = {
         "auc": float(auc),
         "accuracy": float(acc),
         "f1_score": float(f1),
+        "n_estimators": int(args.n_estimators),
+        "learning_rate": float(args.learning_rate),
+        "target_column": args.target_column,
+        "n_features": int(len(feature_names)),
     }
-    with open(os.path.join(metrics_dir, "metrics.json"), "w") as f:
-        json.dump(metrics, f)
-    print("Saved metrics to:", os.path.join(metrics_dir, "metrics.json"))
+    metrics_path = os.path.join(args.output_folder, "metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+    print("Saved metrics to:", metrics_path)
 
-    # save model
-    model_dir = os.path.join(args.output_folder, "model")
-    os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, "model.pkl")
-    joblib.dump({"model": model, "feature_names": list(X_train.columns)}, model_path)
+    # 2) feature_names.json at root
+    feature_names_path = os.path.join(args.output_folder, "feature_names.json")
+    with open(feature_names_path, "w") as f:
+        json.dump(feature_names, f, indent=2)
+    print("Saved feature names to:", feature_names_path)
+
+    # 3) model.pkl at root (this is what you’ll load in inference too)
+    model_path = os.path.join(args.output_folder, "model.pkl")
+    joblib.dump({...}, model_path)
     print("Saved model to:", model_path)
+
+    # 4) optional: model_info.json (helpful when debugging downloads)
+    model_info = {
+        "artifact": "model.pkl",
+        "framework": "lightgbm",
+        "task": "binary_classification",
+        "seed": SEED,
+    }
+    model_info_path = os.path.join(args.output_folder, "model_info.json")
+    with open(model_info_path, "w") as f:
+        json.dump(model_info, f, indent=2)
+    print("Saved model info to:", model_info_path)
 
     print("DONE TRAINING")
 

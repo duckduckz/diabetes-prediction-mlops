@@ -1,4 +1,4 @@
-name: Deploy Diabetes App to Kubernetes
+name: MLOps Automation (Train → Download → Deploy)
 
 on:
   workflow_dispatch:
@@ -6,9 +6,8 @@ on:
     branches: ["main"]
 
 jobs:
-  deploy:
+  azure-pipeline:
     runs-on: self-hosted
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,39 +19,65 @@ jobs:
             -u "${{ secrets.AZURE_CLIENT_ID }}" `
             -p "${{ secrets.AZURE_CLIENT_SECRET }}" `
             --tenant "${{ secrets.AZURE_TENANT_ID }}"
+          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
-      - name: Set Azure subscription
+      - name: Run Azure ML pipeline job
         shell: powershell
         run: |
+          # Submit pipeline (it must include your register step)
+          az ml job create `
+            --file diabetes-pipeline.yaml `
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" `
+            --workspace-name "${{ secrets.AZUREML_WORKSPACE }}" `
+            --stream
+
+  download:
+    runs-on: self-hosted
+    needs: azure-pipeline
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (Service Principal)
+        shell: powershell
+        run: |
+          az login --service-principal `
+            -u "${{ secrets.AZURE_CLIENT_ID }}" `
+            -p "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --tenant "${{ secrets.AZURE_TENANT_ID }}"
           az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
       - name: Download latest registered model into repo ./model
         shell: powershell
         run: |
-          # Clean current model folder to avoid mixing old/new files
           if (Test-Path ".\model") { Remove-Item ".\model" -Recurse -Force }
           New-Item -ItemType Directory -Path ".\model" | Out-Null
 
-          # Download registered model (folder) from Azure ML
           az ml model download `
             --name diabetes-classification-model `
             --version latest `
             --download-path ".\model" `
-            --workspace-name "${{ secrets.AZUREML_WORKSPACE }}" `
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}"
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" `
+            --workspace-name "${{ secrets.AZUREML_WORKSPACE }}"
 
-          # If your train.py saved into model/model.pkl inside the downloaded folder,
-          # normalize it to ./model/model.pkl (what your inference expects)
+          # normalize if the downloaded structure contains model/model.pkl
           if (Test-Path ".\model\model\model.pkl") {
             Move-Item ".\model\model\model.pkl" ".\model\model.pkl" -Force
             Remove-Item ".\model\model" -Recurse -Force
           }
 
           if (!(Test-Path ".\model\model.pkl")) {
-            Write-Error "model.pkl not found in ./model after download. Check train.py save path."
+            Write-Error "model.pkl not found in ./model after download."
           }
 
           Get-ChildItem ".\model" -Recurse
+
+  deploy:
+    runs-on: self-hosted
+    needs: download
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Configure kubeconfig path (Windows)
         shell: powershell
@@ -61,7 +86,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "KUBECONFIG=$path"
           kubectl get nodes
 
-      - name: Build Docker image locally
+      - name: Build Docker image locally (includes freshly downloaded ./model/model.pkl)
         shell: powershell
         run: |
           docker build -t diabetes-api:latest .
