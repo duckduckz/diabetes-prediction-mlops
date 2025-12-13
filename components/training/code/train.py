@@ -147,7 +147,11 @@ def main():
 
     # 3) model.pkl at root (this is what you’ll load in inference too)
     model_path = os.path.join(args.output_folder, "model.pkl")
-    joblib.dump({...}, model_path)
+    joblib.dump(
+    {"model": model, "feature_names": list(X_train.columns)},
+    model_path
+    )
+
     print("Saved model to:", model_path)
 
     # 4) optional: model_info.json (helpful when debugging downloads)

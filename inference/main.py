@@ -27,12 +27,32 @@ async def lifespan(app: FastAPI):
     print(f"loading model from {MODEL_PATH} ...")
     saved = joblib.load(MODEL_PATH)
 
-    # You saved a dict: {"model": model, "feature_names": list(X_train.columns)}
+    if isinstance(saved, dict):
+        model = saved.get("model")
+        feature_names = saved.get("feature_names")
+    elif isinstance(saved, (list, tuple)) and len(saved) == 2:
+        model, feature_names = saved
+    else:
+
+        model = saved
+        feature_names = None
+
+    if model is None:
+        raise RuntimeError(f"Loaded model file but could not parse model object. Type={type(saved)}")
+
+    if feature_names is None:
+        raise RuntimeError(
+            f"feature_names missing in model.pkl (loaded type={type(saved)}). "
+            "Re-train/save model as {'model':..., 'feature_names':...}."
+        )
+
+    print(f"model loaded. number of features: {len(feature_names)}")
+
     model = saved["model"]
     feature_names = saved["feature_names"]
     print(f"model loaded. number of features: {len(feature_names)}")
 
-    yield  # app is running
+    yield  
 
     print("shutting down API...")
 
