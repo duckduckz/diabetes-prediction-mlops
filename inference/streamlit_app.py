@@ -3,6 +3,7 @@ import requests
 
 API_URL = "http://localhost:8000/predict"   
 
+
 st.title("🩺 Diabetes Risk Prediction")
 st.write("Enter the patient details below to estimate diabetes probability.")
 
