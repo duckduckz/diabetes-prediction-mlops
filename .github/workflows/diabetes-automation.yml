@@ -12,19 +12,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure login (Service Principal)
-        shell: powershell
-        run: |
-          az login --service-principal `
-            -u "${{ secrets.AZURE_CLIENT_ID }}" `
-            -p "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            --tenant "${{ secrets.AZURE_TENANT_ID }}"
-          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+      - name: Azure Login (AZURE_CREDENTIALS)
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Run Azure ML pipeline job
+      - name: Ensure Azure ML extension installed
         shell: powershell
         run: |
-          # Submit pipeline (it must include your register step)
+          az extension add -n ml --yes
+          az ml -h
+
+      - name: Run Azure ML pipeline job (train + register)
+        shell: powershell
+        run: |
           az ml job create `
             --file diabetes-pipeline.yaml `
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" `
@@ -38,16 +39,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure login (Service Principal)
+      - name: Azure Login (AZURE_CREDENTIALS)
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure Azure ML extension installed
         shell: powershell
         run: |
-          az login --service-principal `
-            -u "${{ secrets.AZURE_CLIENT_ID }}" `
-            -p "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            --tenant "${{ secrets.AZURE_TENANT_ID }}"
-          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          az extension add -n ml --yes
 
-      - name: Download latest registered model into repo ./model
+      - name: Download latest registered model into ./model
         shell: powershell
         run: |
           if (Test-Path ".\model") { Remove-Item ".\model" -Recurse -Force }
@@ -60,7 +62,7 @@ jobs:
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" `
             --workspace-name "${{ secrets.AZUREML_WORKSPACE }}"
 
-          # normalize if the downloaded structure contains model/model.pkl
+          # If training saved to output_folder/model/model.pkl, normalize to ./model/model.pkl
           if (Test-Path ".\model\model\model.pkl") {
             Move-Item ".\model\model\model.pkl" ".\model\model.pkl" -Force
             Remove-Item ".\model\model" -Recurse -Force
@@ -72,12 +74,32 @@ jobs:
 
           Get-ChildItem ".\model" -Recurse
 
+      - name: Upload model folder as artifact (for deploy job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-folder
+          path: model
+
   deploy:
     runs-on: self-hosted
     needs: download
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download model artifact into ./model
+        uses: actions/download-artifact@v4
+        with:
+          name: model-folder
+          path: model
+
+      - name: Verify model is present
+        shell: powershell
+        run: |
+          if (!(Test-Path ".\model\model.pkl")) {
+            Write-Error "model.pkl missing in deploy job."
+          }
+          Get-ChildItem ".\model" -Recurse
 
       - name: Configure kubeconfig path (Windows)
         shell: powershell
@@ -86,12 +108,12 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "KUBECONFIG=$path"
           kubectl get nodes
 
-      - name: Build Docker image locally (includes freshly downloaded ./model/model.pkl)
+      - name: Build Docker image locally (includes ./model/model.pkl)
         shell: powershell
         run: |
           docker build -t diabetes-api:latest .
 
-      - name: Apply manifests
+      - name: Apply manifests + rollout
         shell: powershell
         run: |
           kubectl apply -f k8s/namespace.yaml
