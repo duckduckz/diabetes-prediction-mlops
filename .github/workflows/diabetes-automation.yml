@@ -20,9 +20,16 @@ jobs:
       - name: Ensure Azure ML extension installed
         shell: powershell
         run: |
-          az extension add -n ml 
-          az extension update -n ml
-          az ml -h
+          $ErrorActionPreference = "Continue"
+          az extension show -n ml 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Azure ML extension already installed. Updating..."
+            az extension update -n ml | Out-Null
+            } else {
+            Write-Host "Azure ML extension not installed. Installing..."
+            az extension add -n ml --yes | Out-Null
+            }
+            az extension show -n ml
 
       - name: Run Azure ML pipeline job (train + register)
         shell: powershell
@@ -48,17 +55,16 @@ jobs:
       - name: Ensure Azure ML extension installed
         shell: powershell
         run: |
-          az extension add -n ml
-          az extension update -n ml
-
-      - name: Sanity check model exists
-        shell: powershell
-        run: |
-          az ml model list `
-            --name diabetes-classification-model `
-            --resource-group "azure-diabetes-rg" `
-            --workspace-name "diabetes-ml-ws" `
-            --query "[0].version" -o tsv
+          $ErrorActionPreference = "Continue"
+          az extension show -n ml 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Azure ML extension already installed. Updating..."
+            az extension update -n ml | Out-Null
+            } else {
+            Write-Host "Azure ML extension not installed. Installing..."
+            az extension add -n ml --yes | Out-Null
+            }
+            az extension show -n ml
 
       - name: Download latest registered model into ./model
         shell: powershell
@@ -73,6 +79,7 @@ jobs:
             --resource-group "azure-diabetes-rg" `
             --workspace-name "diabetes-ml-ws"
 
+          # If training saved to output_folder/model/model.pkl, normalize to ./model/model.pkl
           if (Test-Path ".\model\model\model.pkl") {
             Move-Item ".\model\model\model.pkl" ".\model\model.pkl" -Force
             Remove-Item ".\model\model" -Recurse -Force
