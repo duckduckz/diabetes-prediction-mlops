@@ -48,7 +48,7 @@ jobs:
       - name: Ensure Azure ML extension installed
         shell: powershell
         run: |
-          az extension add -n ml --yes 2>$null
+          az extension add -n ml
           az extension update -n ml
 
       - name: Sanity check model exists
