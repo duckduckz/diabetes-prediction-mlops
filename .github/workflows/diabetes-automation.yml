@@ -20,18 +20,9 @@ jobs:
       - name: Ensure Azure ML extension installed
         shell: powershell
         run: |
-            $ErrorActionPreference = "Continue"
-
-            # Try update first (best when already installed)
-            az extension update -n ml 2>$null
-            if ($LASTEXITCODE -ne 0) {
-            # If update fails (not installed), install it
-            az extension add -n ml --yes 2>$null
-            }
-
-            # Verify
-            az extension show -n ml
-            az ml -h | Out-Null
+          az extension add -n ml 
+          az extension update -n ml
+          az ml -h
 
       - name: Run Azure ML pipeline job (train + register)
         shell: powershell
