@@ -17,7 +17,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Ensure Azure ML extension installed
+      - name: Ensure Azure ML extension installed (safe)
         shell: powershell
         run: |
           $ErrorActionPreference = "Continue"
@@ -25,11 +25,12 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Azure ML extension already installed. Updating..."
             az extension update -n ml | Out-Null
-            } else {
+          } else {
             Write-Host "Azure ML extension not installed. Installing..."
             az extension add -n ml --yes | Out-Null
-            }
-            az extension show -n ml
+          }
+          az extension show -n ml
+          az ml -h
 
       - name: Run Azure ML pipeline job (train + register)
         shell: powershell
@@ -52,7 +53,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Ensure Azure ML extension installed
+      - name: Ensure Azure ML extension installed (safe)
         shell: powershell
         run: |
           $ErrorActionPreference = "Continue"
@@ -60,11 +61,11 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Azure ML extension already installed. Updating..."
             az extension update -n ml | Out-Null
-            } else {
+          } else {
             Write-Host "Azure ML extension not installed. Installing..."
             az extension add -n ml --yes | Out-Null
-            }
-            az extension show -n ml
+          }
+          az extension show -n ml
 
       - name: Download latest registered model into ./model
         shell: powershell
@@ -79,7 +80,7 @@ jobs:
             --resource-group "azure-diabetes-rg" `
             --workspace-name "diabetes-ml-ws"
 
-          # If training saved to output_folder/model/model.pkl, normalize to ./model/model.pkl
+          # normalize if nested folder happens
           if (Test-Path ".\model\model\model.pkl") {
             Move-Item ".\model\model\model.pkl" ".\model\model.pkl" -Force
             Remove-Item ".\model\model" -Recurse -Force
