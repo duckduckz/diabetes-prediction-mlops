@@ -92,18 +92,25 @@ jobs:
             --download-path ".\model" `
             --resource-group "azure-diabetes-rg" `
             --workspace-name "diabetes-ml-ws"
+          
+          Write-Host "Downloaded files (raw structure):"
+          Get-ChildItem ".\model" -Recurse | Select-Object FullName
 
-          # normalize if nested folder happens
-          if (Test-Path ".\model\model\model.pkl") {
-            Move-Item ".\model\model\model.pkl" ".\model\model.pkl" -Force
-            Remove-Item ".\model\model" -Recurse -Force
+          $pkl = Get-ChildItem ".\model" -Recurse -Filter "model.pkl" -File | Select-Object -First 1
+
+          if (-not $pkl) {
+            Write-Error "model.pkl not found anywhere under ./model. Check register output packaging."
           }
+          Write-Host "Found model.pkl at: $($pkl.FullName)"
+          Move-Item $pkl.FullName ".\model\model.pkl" -Force
 
-          if (!(Test-Path ".\model\model.pkl")) {
-            Write-Error "model.pkl not found in ./model after download."
-          }
+          Get-ChildItem ".\model" -Force | Where-Object { $_.Name -ne "model.pkl" } | Remove-Item -Recurse -Force
 
+          Write-Host "Final model folder:"
           Get-ChildItem ".\model" -Recurse
+
+
+          
 
       - name: Upload model folder as artifact (for deploy job)
         uses: actions/upload-artifact@v4
