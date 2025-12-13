@@ -28,8 +28,8 @@ jobs:
         run: |
           az ml job create `
             --file diabetes-pipeline.yaml `
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" `
-            --workspace-name "${{ secrets.AZUREML_WORKSPACE }}" `
+            --resource-group "azure-diabetes-rg" `
+            --workspace-name "diabetes-ml-ws" `
             --stream
 
   download:
@@ -59,8 +59,8 @@ jobs:
             --name diabetes-classification-model `
             --version latest `
             --download-path ".\model" `
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" `
-            --workspace-name "${{ secrets.AZUREML_WORKSPACE }}"
+            --resource-group "azure-diabetes-rg" `
+            --workspace-name "diabetes-ml-ws"
 
           # If training saved to output_folder/model/model.pkl, normalize to ./model/model.pkl
           if (Test-Path ".\model\model\model.pkl") {
